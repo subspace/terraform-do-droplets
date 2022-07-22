@@ -6,7 +6,7 @@ resource "null_resource" "node_keys" {
 
   # generate node keys
   provisioner "local-exec" {
-    command = "../../scripts/generate_node_keys.sh ${length(digitalocean_droplet.gemini-1b)} ./node_keys.txt"
+    command = "utils/scripts/generate_node_keys.sh ${length(digitalocean_droplet.gemini-1b)} ./node_keys.txt"
     interpreter = [ "/bin/bash", "-c" ]
     environment = {
       NODE_PUBLIC_IPS = join(",", digitalocean_droplet.gemini-1b.*.ipv4_address)
@@ -28,8 +28,9 @@ resource "null_resource" "setup_nodes" {
     host = digitalocean_droplet.gemini-1b[count.index].ipv4_address
     user = "root"
     type = "ssh"
-    agent = true
-    agent_identity = var.ssh_identity
+    agent = false
+#    agent_identity = var.ssh_identity
+    private_key = var.alexey2_do_private_key
     timeout = "2m"
   }
 
@@ -42,7 +43,7 @@ resource "null_resource" "setup_nodes" {
 
   # copy install file
   provisioner "file" {
-    source = "../../scripts/install_docker.sh"
+    source = "utils/scripts/install_docker.sh"
     destination = "/subspace/install_docker.sh"
   }
 
@@ -59,7 +60,7 @@ resource "null_resource" "setup_nodes" {
 # deployment version
 # increment this to restart node with any changes to env and compose files
 locals {
-  deployment_version = 3
+  deployment_version = 9
 }
 
 resource "null_resource" "start_nodes" {
@@ -76,8 +77,9 @@ resource "null_resource" "start_nodes" {
     host = digitalocean_droplet.gemini-1b[count.index].ipv4_address
     user = "root"
     type = "ssh"
-    agent = true
-    agent_identity = var.ssh_identity
+    agent = false
+    #    agent_identity = var.ssh_identity
+    private_key = var.alexey2_do_private_key
     timeout = "2m"
   }
 
@@ -89,7 +91,7 @@ resource "null_resource" "start_nodes" {
 
   # copy compose file
   provisioner "file" {
-    source = "../../services/gemini-1/install_compose_file.sh"
+    source = "utils/services/gemini-1/install_compose_file.sh"
     destination = "/subspace/install_compose_file.sh"
   }
 
@@ -97,7 +99,7 @@ resource "null_resource" "start_nodes" {
   provisioner "remote-exec" {
     inline = [
       "docker compose -f /subspace/docker-compose.yml down",
-      "echo NODE_SNAPSHOT_TAG=${var.node-snapshot-tag} >> /subspace/.env",
+      "echo NODE_SNAPSHOT_TAG=${var.node-snapshot-tag} > /subspace/.env",
       "echo NODE_ID=${count.index} >> /subspace/.env",
       "echo NODE_KEY=$(sed -nr 's/NODE_${count.index}_KEY=//p' /subspace/node_keys.txt) >> /subspace/.env",
       "sudo chmod +x /subspace/install_compose_file.sh",

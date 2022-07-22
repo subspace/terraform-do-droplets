@@ -22,33 +22,30 @@ services:
       - caddy_data:/data
 
   archival-node:
-    image: ghcr.io/subspace/node:\${NODE_SNAPSHOT_TAG}
+    image: vedhavyas/subspace-node:latest
     volumes:
       - archival_node_data:/var/subspace:rw
     restart: unless-stopped
     ports:
       - "30333:30333"
     labels:
-      caddy: rpc-\${NODE_ID}.gemini-1b.subspace.network
+      caddy: rpc.x-net.subspace.network
       caddy.handle_path_0: /http
       caddy.handle_path_0.reverse_proxy: "{{upstreams 9933}}"
       caddy.handle_path_1: /ws
       caddy.handle_path_1.reverse_proxy: "{{upstreams 9944}}"
     command: [
-      "--chain", "gemini-1",
+      "--chain", "x-net-1",
       "--base-path", "/var/subspace",
       "--execution", "wasm",
       "--pruning", "archive",
       "--pool-kbytes", "51200",
       "--listen-addr", "/ip4/0.0.0.0/tcp/30333",
+      "--name", "rpc-node",
       "--node-key", \$NODE_KEY,
       "--rpc-cors", "all",
       "--rpc-external",
       "--ws-external",
-      "--in-peers", "500",
-      "--out-peers", "250",
-      "--in-peers-light", "500",
-      "--ws-max-connections", "10000",
 EOF
 
 node_count=${1}
